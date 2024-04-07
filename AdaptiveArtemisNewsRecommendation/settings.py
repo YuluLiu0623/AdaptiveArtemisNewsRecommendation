@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-*k(713agrm1@+ql4xwen!ur&p3r521plnm%6f@4mko^f_yc!_8
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+AUTH_USER_MODEL = 'users.User'  # Custom user model
 
 # Application definition
 
@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'users',                             # users module
     'news',
     'rest_framework',
-    'corsheaders'
+    'corsheaders',
+    'scraping',                          # scraping module
+    'userModeling'                       # userModeling module
 ]
 
 MIDDLEWARE = [
@@ -52,6 +54,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
 ]
 
 ROOT_URLCONF = 'AdaptiveArtemisNewsRecommendation.urls'
