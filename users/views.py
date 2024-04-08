@@ -3,6 +3,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+
 from .models import User, NewsLog
 
 
@@ -26,7 +28,7 @@ def register(request):
                 username=username,
                 email=email,
                 password=make_password(password),
-                preferList=json.dumps([])
+                preferList=[]
             )
             user.save()
 
@@ -49,7 +51,16 @@ def user_login(request):
 
             if user is not None:
                 login(request, user)
-                return JsonResponse({'message': 'Login successful'}, status=200)
+                if user.is_first_login:
+                    return JsonResponse({
+                        'message': 'Login successful',
+                        'is_First_Login': True
+                    }, status=200)
+                else:
+                    return JsonResponse({
+                        'message': 'Login successful',
+                        'is_First_Login': False
+                    }, status=200)
             else:
                 return JsonResponse({'message': 'Invalid credentials'}, status=400)
         except json.JSONDecodeError:
@@ -72,12 +83,12 @@ def get_user_profile(request):
     current_user = request.user
     if request.method == 'GET':
         try:
-            prefer_list = json.loads(current_user.preferList)
+            prefer_list = current_user.preferList
             normalized_prefer_list = normalize_prefer_list(prefer_list)
 
             recent_news_logs = (NewsLog.objects.filter(user=current_user)
                                 .order_by('-timestamp')[:10])
-                                # .values('news_id', 'timestamp')
+                                .values('news_id', 'timestamp')
 
             user_info = {
                 'username': current_user.username,
@@ -90,3 +101,20 @@ def get_user_profile(request):
             return JsonResponse({'message': str(e)}, status=500)
     else:
         return JsonResponse({'message': 'Invalid request method'}, status=400)
+
+@login_required
+@require_http_methods(['POST'])
+def update_prefer_list(request):
+    try:
+        data = json.loads(request.body)
+        prefer_list = data.get('prefer_list')
+
+        if isinstance(prefer_list, list) and len(prefer_list) > 0:
+            request.user.set_prefer_list(prefer_list)
+            return JsonResponse({'message': 'Prefer list updated successfully'}, status=200)
+        else:
+            return JsonResponse({'message': 'Invalid prefer list'}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'message': 'Invalid request body'}, status=400)
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=500)
